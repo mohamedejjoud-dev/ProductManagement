@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- CSP: only allow scripts/styles from self and trusted CDNs -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 script-src 'self';
+                 style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+                 font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+                 img-src 'self' data:;
+                 connect-src 'none';"/>
+  <title>ProductVault — Management System</title>
+  <meta name="description" content="ProductVault is a modern product management system to create, update, search, and delete products."/>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <link rel="stylesheet" href="index.css"/>
+</head>
+<body>
+
+  <div class="app-wrapper">
+
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="header-logo">
+        <span class="logo-icon"><i class="fa-solid fa-cube"></i></span>
+        <div class="logo-text">
+          <h1>ProductVault</h1>
+          <p>MANAGEMENT SYSTEM</p>
+        </div>
+      </div>
+      <div class="stat-chip">
+        <i class="fa-solid fa-box-archive"></i>
+        <span id="statCount">0 products</span>
+      </div>
+    </header>
+
+    <!-- MAIN -->
+    <main>
+
+      <!-- FORM PANEL -->
+      <section class="glass-panel form-panel">
+        <div class="panel-header">
+          <span class="panel-icon"><i class="fa-solid fa-circle-plus"></i></span>
+          <h2 id="formTitle">New Product</h2>
+        </div>
+
+        <div class="form-body">
+
+          <!-- Title -->
+          <div class="field-group full-width">
+            <label><i class="fa-solid fa-tag"></i> PRODUCT TITLE</label>
+            <!-- maxlength guards against localStorage flooding (#8) -->
+            <input type="text" id="title" placeholder="e.g. Wireless Headphones" maxlength="120"/>
+          </div>
+
+          <!-- Price + Discount -->
+          <div class="form-row">
+            <div class="field-group">
+              <label><i class="fa-solid fa-dollar-sign"></i> PRICE</label>
+              <input type="number" id="price" placeholder="0.00" min="0" oninput="calcTotal()"/>
+            </div>
+            <div class="field-group">
+              <label><i class="fa-solid fa-percent"></i> DISCOUNT</label>
+              <input type="number" id="discount" placeholder="0.00" min="0" oninput="calcTotal()"/>
+            </div>
+          </div>
+
+          <!-- Total display -->
+          <div class="total-bar full-width" id="totalBar">
+            <span class="total-label"><i class="fa-solid fa-receipt"></i> TOTAL</span>
+            <span class="total-value" id="totalValue">—</span>
+          </div>
+
+          <!-- Qty + Category -->
+          <div class="form-row">
+            <div class="field-group">
+              <label><i class="fa-solid fa-layer-group"></i> QUANTITY</label>
+              <input type="number" id="count" placeholder="1" min="1"/>
+            </div>
+            <div class="field-group">
+              <label><i class="fa-solid fa-shapes"></i> CATEGORY</label>
+              <input type="text" id="category" placeholder="e.g. Electronics" maxlength="60"/>
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="btn-row full-width">
+            <button class="btn btn-reset" id="resetBtn" onclick="resetForm()">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+            <button class="btn btn-primary" id="submitBtn" onclick="submitProduct()">
+              <i class="fa-solid fa-plus"></i> Create Product
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TABLE PANEL -->
+      <section class="glass-panel table-panel">
+        <div class="panel-header">
+          <span class="panel-icon"><i class="fa-solid fa-table-list"></i></span>
+          <h2>Products</h2>
+          <button class="btn btn-danger-sm hidden" id="deleteAllBtn" onclick="deleteAll()">
+            <i class="fa-solid fa-trash"></i> Delete All
+          </button>
+        </div>
+
+        <div class="search-bar-row">
+          <div class="search-wrap">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="search" placeholder="Search products..." oninput="liveSearch()"/>
+          </div>
+          <div class="filter-pills">
+            <button class="pill" id="pillTitle" onclick="activatePill('title')">
+              <i class="fa-solid fa-heading"></i> By Title
+            </button>
+            <button class="pill" id="pillCategory" onclick="activatePill('category')">
+              <i class="fa-solid fa-shapes"></i> By Category
+            </button>
+            <button class="pill pill-clear hidden" id="pillClear" onclick="clearSearch()" title="Clear search">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>TITLE</th>
+                <th>PRICE</th>
+                <th>DISCOUNT</th>
+                <th>TOTAL</th>
+                <th>CATEGORY</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+          <!-- Empty state -->
+          <div class="empty-state" id="emptyState">
+            <i class="fa-solid fa-box-open"></i>
+            <p>No products yet. Create one above!</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="index.js"></script>
+</body>
+</html>
