@@ -1,279 +1,280 @@
-/* ============================================================
-   ProductVault — index.js
-   ============================================================ */
-
-// ── DOM refs ────────────────────────────────────────────────
-const titleEl    = document.getElementById('title');
-const priceEl    = document.getElementById('price');
-const discountEl = document.getElementById('discount');
+const productForm = document.getElementById('productForm');
+const titleInput = document.getElementById('title');
+const priceInput = document.getElementById('price');
+const discountInput = document.getElementById('discount');
 const totalValue = document.getElementById('totalValue');
-const countEl    = document.getElementById('count');
-const categoryEl = document.getElementById('category');
-const submitBtn  = document.getElementById('submitBtn');
-const resetBtn   = document.getElementById('resetBtn');
-const formTitle  = document.getElementById('formTitle');
-const statCount    = document.getElementById('statCount');
-const searchEl     = document.getElementById('search');
-const tbody        = document.getElementById('tbody');
-const emptyState   = document.getElementById('emptyState');
-const pillClear    = document.getElementById('pillClear');
+const countInput = document.getElementById('count');
+const countGroup = document.getElementById('countGroup');
+const categoryInput = document.getElementById('category');
+const submitBtn = document.getElementById('submitBtn');
+const formTitle = document.getElementById('formTitle');
+const statCount = document.getElementById('statCount');
+const searchInput = document.getElementById('search');
+const pillTitle = document.getElementById('pillTitle');
+const pillCategory = document.getElementById('pillCategory');
+const pillClear = document.getElementById('pillClear');
+const tbody = document.getElementById('tbody');
+const emptyState = document.getElementById('emptyState');
 const deleteAllBtn = document.getElementById('deleteAllBtn');
 
-// ── State ────────────────────────────────────────────────────
-// FIX #3: Safe localStorage parse — corrupted data won't crash the app
-function safeLoadProducts() {
+const STORAGE_KEY = 'products';
+let products = loadProducts();
+let editingId = null;
+let filterBy = 'title';
+
+function loadProducts() {
   try {
-    const raw = localStorage.getItem('product');
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('product');
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
-    console.warn('[ProductVault] localStorage data was corrupted, resetting.', e);
-    localStorage.removeItem('product');
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map((p, index) => ({
+      id: Number(p.id) || (index + 1),
+      title: String(p.title || '').trim(),
+      price: Math.max(0, Number(p.price) || 0),
+      discount: Math.max(0, Number(p.discount) || 0),
+      total: Math.max(0, Number(p.total) || 0),
+      category: String(p.category || '').trim()
+    }));
+  } catch {
     return [];
   }
 }
-let dataPro   = safeLoadProducts();
-let mode      = 'create';   // 'create' | 'update'
-let editIndex = -1;
-let filterBy  = 'title';    // 'title' | 'category'
 
-// ── Calc total ───────────────────────────────────────────────
-function calcTotal() {
-  const p = parseFloat(priceEl.value)    || 0;
-  const d = parseFloat(discountEl.value) || 0;
-  const result = p - d;
-  totalValue.textContent = (p === 0 && d === 0) ? '—' : `$${result.toFixed(2)}`;
+function saveProducts() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 }
 
-// ── Save to localStorage ─────────────────────────────────────
-function save() {
-  localStorage.setItem('product', JSON.stringify(dataPro));
+function getNextId() {
+  if (products.length === 0) return 1;
+  return products.reduce((max, p) => (p.id > max ? p.id : max), 0) + 1;
 }
 
-// ── Render table ─────────────────────────────────────────────
-// list: optional pre-filtered array where each item already has ._idx
-// If omitted, renders the full dataPro array.
-function showData(list) {
-  // When rendering the full list, tag each item with its real index
-  const rows = list ?? dataPro.map((p, i) => ({ ...p, _idx: i }));
+function formatNumber(val) {
+  const num = Number(val) || 0;
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
 
-  // empty state
-  if (rows.length === 0) {
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function calculateTotal() {
+  const price = parseFloat(priceInput.value);
+  const discount = parseFloat(discountInput.value) || 0;
+
+  if (isNaN(price) && !discountInput.value) {
+    totalValue.textContent = '—';
+    return 0;
+  }
+
+  const validPrice = isNaN(price) ? 0 : price;
+  const total = Math.max(0, Math.round((validPrice - discount) * 100) / 100);
+  totalValue.textContent = formatNumber(total);
+  return total;
+}
+
+function getFilteredProducts() {
+  const query = searchInput.value.trim().toLowerCase();
+  pillClear.classList.toggle('hidden', query.length === 0);
+
+  if (!query) return products;
+
+  return products.filter(product => {
+    const field = filterBy === 'title' ? product.title : product.category;
+    return (field || '').toLowerCase().includes(query);
+  });
+}
+
+function renderProducts() {
+  const list = getFilteredProducts();
+
+  if (list.length === 0) {
     tbody.innerHTML = '';
     emptyState.classList.remove('hidden');
+    const msg = emptyState.querySelector('p');
+    if (msg) {
+      msg.textContent = products.length === 0
+        ? 'No products yet. Create one above.'
+        : 'No matching products found.';
+    }
   } else {
     emptyState.classList.add('hidden');
-    tbody.innerHTML = rows.map((p, i) => `
+    tbody.innerHTML = list.map(p => `
       <tr>
-        <td>${i + 1}</td>
-        <td>${escHtml(p.title)}</td>
-        <td>$${parseFloat(p.price).toFixed(2)}</td>
-        <td>${parseFloat(p.discount).toFixed(2)}%</td>
-        <td style="color:var(--emerald);font-weight:600">$${parseFloat(p.total).toFixed(2)}</td>
-        <td>${escHtml(p.category)}</td>
-        <td>
-          <button class="action-btn btn-edit"   onclick="startEdit(${p._idx})">
-            <i class="fa-solid fa-pen-to-square"></i> Edit
-          </button>
-          <button class="action-btn btn-delete" onclick="deleteData(${p._idx})">
-            <i class="fa-solid fa-trash-can"></i> Delete
-          </button>
+        <td>${p.id}</td>
+        <td>${escapeHtml(p.title)}</td>
+        <td class="text-right">${formatNumber(p.price)}</td>
+        <td class="text-right">${formatNumber(p.discount)}</td>
+        <td class="text-right">${formatNumber(p.total)}</td>
+        <td>${escapeHtml(p.category || '—')}</td>
+        <td class="text-right">
+          <button type="button" class="action-btn btn-edit" data-id="${p.id}">Edit</button>
+          <button type="button" class="action-btn btn-delete" data-id="${p.id}">Delete</button>
         </td>
       </tr>
     `).join('');
   }
 
-  // header count always reflects full list size
-  const n = dataPro.length;
-  statCount.textContent = `${n} ${n === 1 ? 'product' : 'products'}`;
-  // show Delete All only when there are products
-  deleteAllBtn.classList.toggle('hidden', n === 0);
+  const count = products.length;
+  statCount.textContent = `${count} ${count === 1 ? 'product' : 'products'}`;
+  deleteAllBtn.classList.toggle('hidden', count === 0);
 }
 
-// ── Escape HTML ───────────────────────────────────────────────
-// FIX #10: Also escape single-quotes for full attribute safety
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,  '&amp;')
-    .replace(/</g,  '&lt;')
-    .replace(/>/g,  '&gt;')
-    .replace(/"/g,  '&quot;')
-    .replace(/'/g,  '&#x27;');
+function startEdit(id) {
+  const product = products.find(p => p.id === id);
+  if (!product) return;
+
+  editingId = id;
+  titleInput.value = product.title;
+  priceInput.value = product.price;
+  discountInput.value = product.discount;
+  categoryInput.value = product.category || '';
+  calculateTotal();
+
+  formTitle.textContent = `Edit Product #${product.id}`;
+  submitBtn.textContent = 'Save Changes';
+  submitBtn.className = 'btn btn-update';
+  countGroup.classList.add('hidden');
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  titleInput.focus();
 }
 
-// ── Submit (create / update) ──────────────────────────────────
-const LIMITS = {
-  titleMaxLen:    120,   // matches maxlength in HTML (#1)
-  categoryMaxLen: 60,
-  priceMax:       1_000_000,  // FIX #5: prevent absurd floats
-  countMax:       500,         // FIX #2: prevent browser freeze
-};
-
-function submitProduct() {
-  const titleVal    = titleEl.value.trim();
-  const priceVal    = parseFloat(priceEl.value);
-  const discountVal = parseFloat(discountEl.value) || 0;
-  const countVal    = parseInt(countEl.value)      || 1;
-  const categoryVal = categoryEl.value.trim();
-
-  // ── Validation ─────────────────────────────────────────────
-  if (!titleVal)
-    return shake(titleEl,    'Title is required');
-  if (titleVal.length > LIMITS.titleMaxLen)                   // FIX #1
-    return shake(titleEl,    `Title must be ≤ ${LIMITS.titleMaxLen} characters`);
-  if (isNaN(priceVal) || priceVal < 0)
-    return shake(priceEl,    'Enter a valid price (≥ 0)');
-  if (priceVal > LIMITS.priceMax)                             // FIX #5
-    return shake(priceEl,    `Price must be ≤ ${LIMITS.priceMax.toLocaleString()}`);
-  if (discountVal < 0)                                        // FIX #4
-    return shake(discountEl, 'Discount cannot be negative');
-  if (discountVal > priceVal)                                 // FIX #4
-    return shake(discountEl, 'Discount cannot exceed the price');
-  if (mode === 'create' && countVal < 1)
-    return shake(countEl,    'Quantity must be ≥ 1');
-  if (mode === 'create' && countVal > LIMITS.countMax)        // FIX #2
-    return shake(countEl,    `Quantity must be ≤ ${LIMITS.countMax}`);
-  if (categoryVal.length > LIMITS.categoryMaxLen)             // FIX #1
-    return shake(categoryEl, `Category must be ≤ ${LIMITS.categoryMaxLen} characters`);
-
-  const total = priceVal - discountVal;
-
-  if (mode === 'create') {
-    const copies = Math.min(Math.max(1, countVal), LIMITS.countMax);
-    for (let i = 0; i < copies; i++) {
-      dataPro.push({ title: titleVal, price: priceVal, discount: discountVal, total, category: categoryVal });
-    }
-  } else {
-    // FIX #6: bounds-check editIndex before writing
-    if (editIndex < 0 || editIndex >= dataPro.length) {
-      console.error('[ProductVault] Invalid editIndex, aborting update.');
-      endEdit();
-      return;
-    }
-    dataPro[editIndex] = { title: titleVal, price: priceVal, discount: discountVal, total, category: categoryVal };
-    endEdit();
-  }
-
-  save();
-  clearForm();
-  showData();
-}
-
-// ── Shake animation for invalid input ────────────────────────
-function shake(el, msg) {
-  el.style.borderColor = 'var(--red)';
-  el.style.boxShadow   = '0 0 0 3px rgba(255,82,82,.15)';
-  el.focus();
-  setTimeout(() => {
-    el.style.borderColor = '';
-    el.style.boxShadow   = '';
-  }, 1400);
-  console.warn(msg);
-}
-
-// ── Reset / clear form ────────────────────────────────────────
-function resetForm()  { clearForm(); endEdit(); }
-
-function clearForm() {
-  titleEl.value    = '';
-  priceEl.value    = '';
-  discountEl.value = '';
-  countEl.value    = '';
-  categoryEl.value = '';
+function resetForm() {
+  editingId = null;
+  productForm.reset();
+  formTitle.textContent = 'New Product';
+  submitBtn.textContent = 'Create Product';
+  submitBtn.className = 'btn btn-primary';
+  countGroup.classList.remove('hidden');
   totalValue.textContent = '—';
 }
 
-// ── Delete single ─────────────────────────────────────────────
-function deleteData(idx) {
-  // FIX #7: bounds-check before splice to avoid array corruption
-  if (typeof idx !== 'number' || idx < 0 || idx >= dataPro.length) {
-    console.error('[ProductVault] deleteData: invalid index', idx);
+function handleSubmit(e) {
+  e.preventDefault();
+
+  const title = titleInput.value.trim();
+  const price = parseFloat(priceInput.value);
+  const discount = parseFloat(discountInput.value) || 0;
+  const category = categoryInput.value.trim();
+
+  if (!title) {
+    titleInput.focus();
     return;
   }
-  dataPro.splice(idx, 1);
-  save();
-  liveSearch();
+
+  if (isNaN(price) || price < 0) {
+    priceInput.focus();
+    return;
+  }
+
+  if (discount < 0 || discount > price) {
+    discountInput.focus();
+    alert('Discount cannot exceed the price');
+    return;
+  }
+
+  const total = Math.max(0, Math.round((price - discount) * 100) / 100);
+
+  if (editingId !== null) {
+    const product = products.find(p => p.id === editingId);
+    if (product) {
+      product.title = title;
+      product.price = price;
+      product.discount = discount;
+      product.total = total;
+      product.category = category;
+    }
+    resetForm();
+  } else {
+    const quantity = Math.min(Math.max(1, parseInt(countInput.value, 10) || 1), 500);
+    let startId = getNextId();
+    for (let i = 0; i < quantity; i++) {
+      products.push({
+        id: startId++,
+        title,
+        price,
+        discount,
+        total,
+        category
+      });
+    }
+    resetForm();
+  }
+
+  saveProducts();
+  renderProducts();
 }
 
-// ── Delete all ────────────────────────────────────────────────
+function deleteProduct(id) {
+  const target = products.find(p => p.id === id);
+  if (!target) return;
+
+  if (!confirm(`Delete "${target.title}"?`)) return;
+
+  if (editingId === id) resetForm();
+
+  products = products.filter(p => p.id !== id);
+  saveProducts();
+  renderProducts();
+}
+
 function deleteAll() {
-  if (dataPro.length === 0) return;
-  if (!confirm(`Delete all ${dataPro.length} products?`)) return;
-  dataPro = [];
-  localStorage.removeItem('product');
-  clearSearch();
-  showData();
+  if (products.length === 0) return;
+  if (!confirm(`Delete all ${products.length} products?`)) return;
+
+  products = [];
+  resetForm();
+  saveProducts();
+  renderProducts();
 }
 
-// ── Edit ──────────────────────────────────────────────────────
-function startEdit(idx) {
-  // FIX #6: guard against undefined / out-of-range index
-  if (typeof idx !== 'number' || idx < 0 || idx >= dataPro.length) {
-    console.error('[ProductVault] startEdit: invalid index', idx);
-    return;
-  }
-  const p = dataPro[idx];
-  titleEl.value    = p.title;
-  priceEl.value    = p.price;
-  discountEl.value = p.discount;
-  categoryEl.value = p.category;
-  calcTotal();
+productForm.addEventListener('submit', handleSubmit);
+productForm.addEventListener('reset', resetForm);
+priceInput.addEventListener('input', calculateTotal);
+discountInput.addEventListener('input', calculateTotal);
+searchInput.addEventListener('input', renderProducts);
 
-  editIndex = idx;
-  mode      = 'update';
+pillTitle.addEventListener('click', () => {
+  filterBy = 'title';
+  pillTitle.classList.add('active');
+  pillCategory.classList.remove('active');
+  renderProducts();
+  searchInput.focus();
+});
 
-  formTitle.textContent     = 'Edit Product';
-  submitBtn.innerHTML       = '<i class="fa-solid fa-floppy-disk"></i> Save Changes';
-  submitBtn.className       = 'btn btn-update';
-  countEl.closest('.field-group').style.display = 'none';
+pillCategory.addEventListener('click', () => {
+  filterBy = 'category';
+  pillCategory.classList.add('active');
+  pillTitle.classList.remove('active');
+  renderProducts();
+  searchInput.focus();
+});
 
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+pillClear.addEventListener('click', () => {
+  searchInput.value = '';
+  renderProducts();
+  searchInput.focus();
+});
 
-function endEdit() {
-  mode      = 'create';
-  editIndex = -1;
-  formTitle.textContent = 'New Product';
-  submitBtn.innerHTML   = '<i class="fa-solid fa-plus"></i> Create Product';
-  submitBtn.className   = 'btn btn-primary';
-  countEl.closest('.field-group').style.display = '';
-}
+deleteAllBtn.addEventListener('click', deleteAll);
 
-// ── Search / filter pills ─────────────────────────────────────
-function activatePill(by) {
-  filterBy = by;
-  document.getElementById('pillTitle').classList.toggle('active',    by === 'title');
-  document.getElementById('pillCategory').classList.toggle('active', by === 'category');
-  searchEl.placeholder = by === 'title' ? 'Search by title…' : 'Search by category…';
-  searchEl.focus();
-  liveSearch();
-}
+tbody.addEventListener('click', (e) => {
+  const btn = e.target.closest('.action-btn');
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  if (btn.classList.contains('btn-edit')) startEdit(id);
+  if (btn.classList.contains('btn-delete')) deleteProduct(id);
+});
 
-function clearSearch() {
-  searchEl.value = '';
-  pillClear.classList.add('hidden');
-  document.getElementById('pillTitle').classList.remove('active');
-  document.getElementById('pillCategory').classList.remove('active');
-  showData();
-}
-
-function liveSearch() {
-  const q = searchEl.value.trim().toLowerCase();
-  // show/hide the × clear button
-  pillClear.classList.toggle('hidden', q.length === 0);
-  if (!q) { showData(); return; }
-
-  // Tag each item with its real index before filtering
-  const filtered = dataPro
-    .map((p, i) => ({ ...p, _idx: i }))
-    .filter(p =>
-      filterBy === 'title'
-        ? p.title.toLowerCase().includes(q)
-        : p.category.toLowerCase().includes(q)
-    );
-  showData(filtered);
-}
-
-// ── Init ──────────────────────────────────────────────────────
-showData();
+renderProducts();

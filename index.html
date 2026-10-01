@@ -1,161 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <!-- CSP: only allow scripts/styles from self and trusted CDNs -->
-  <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self';
-                 script-src 'self';
-                 style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
-                 font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com;
-                 img-src 'self' data:;
-                 connect-src 'none';"/>
-  <title>ProductVault — Management System</title>
-  <meta name="description" content="ProductVault is a modern product management system to create, update, search, and delete products."/>
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-
-  <!-- Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-
-  <link rel="stylesheet" href="index.css"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProductVault — Inventory Management</title>
+  <link rel="stylesheet" href="index.css">
 </head>
 <body>
-
-  <div class="app-wrapper">
-
-    <!-- HEADER -->
-    <header class="app-header">
-      <div class="header-logo">
-        <span class="logo-icon"><i class="fa-solid fa-cube"></i></span>
-        <div class="logo-text">
-          <h1>ProductVault</h1>
-          <p>MANAGEMENT SYSTEM</p>
-        </div>
-      </div>
-      <div class="stat-chip">
-        <i class="fa-solid fa-box-archive"></i>
-        <span id="statCount">0 products</span>
-      </div>
+  <div class="container">
+    <header class="header">
+      <h1>ProductVault</h1>
+      <span id="statCount">0 products</span>
     </header>
 
-    <!-- MAIN -->
     <main>
-
-      <!-- FORM PANEL -->
-      <section class="glass-panel form-panel">
-        <div class="panel-header">
-          <span class="panel-icon"><i class="fa-solid fa-circle-plus"></i></span>
-          <h2 id="formTitle">New Product</h2>
-        </div>
-
-        <div class="form-body">
-
-          <!-- Title -->
-          <div class="field-group full-width">
-            <label><i class="fa-solid fa-tag"></i> PRODUCT TITLE</label>
-            <!-- maxlength guards against localStorage flooding (#8) -->
-            <input type="text" id="title" placeholder="e.g. Wireless Headphones" maxlength="120"/>
+      <section class="card">
+        <h2 id="formTitle">New Product</h2>
+        <form id="productForm">
+          <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" id="title" required maxlength="120" autocomplete="off">
           </div>
 
-          <!-- Price + Discount -->
           <div class="form-row">
-            <div class="field-group">
-              <label><i class="fa-solid fa-dollar-sign"></i> PRICE</label>
-              <input type="number" id="price" placeholder="0.00" min="0" oninput="calcTotal()"/>
+            <div class="form-group">
+              <label for="price">Price</label>
+              <input type="number" id="price" required min="0" step="0.01">
             </div>
-            <div class="field-group">
-              <label><i class="fa-solid fa-percent"></i> DISCOUNT</label>
-              <input type="number" id="discount" placeholder="0.00" min="0" oninput="calcTotal()"/>
+            <div class="form-group">
+              <label for="discount">Discount</label>
+              <input type="number" id="discount" min="0" step="0.01">
             </div>
           </div>
 
-          <!-- Total display -->
-          <div class="total-bar full-width" id="totalBar">
-            <span class="total-label"><i class="fa-solid fa-receipt"></i> TOTAL</span>
-            <span class="total-value" id="totalValue">—</span>
+          <div class="total-display">
+            <span>Total:</span>
+            <strong id="totalValue">—</strong>
           </div>
 
-          <!-- Qty + Category -->
           <div class="form-row">
-            <div class="field-group">
-              <label><i class="fa-solid fa-layer-group"></i> QUANTITY</label>
-              <input type="number" id="count" placeholder="1" min="1"/>
+            <div class="form-group" id="countGroup">
+              <label for="count">Quantity</label>
+              <input type="number" id="count" min="1" max="100">
             </div>
-            <div class="field-group">
-              <label><i class="fa-solid fa-shapes"></i> CATEGORY</label>
-              <input type="text" id="category" placeholder="e.g. Electronics" maxlength="60"/>
+            <div class="form-group">
+              <label for="category">Category</label>
+              <input type="text" id="category" maxlength="60" autocomplete="off">
             </div>
           </div>
 
-          <!-- Buttons -->
-          <div class="btn-row full-width">
-            <button class="btn btn-reset" id="resetBtn" onclick="resetForm()">
-              <i class="fa-solid fa-rotate-left"></i> Reset
-            </button>
-            <button class="btn btn-primary" id="submitBtn" onclick="submitProduct()">
-              <i class="fa-solid fa-plus"></i> Create Product
-            </button>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="submitBtn">Create Product</button>
+            <button type="reset" class="btn btn-secondary" id="resetBtn">Reset</button>
           </div>
-
-        </div>
+        </form>
       </section>
 
-      <!-- TABLE PANEL -->
-      <section class="glass-panel table-panel">
-        <div class="panel-header">
-          <span class="panel-icon"><i class="fa-solid fa-table-list"></i></span>
+      <section class="card">
+        <div class="card-header">
           <h2>Products</h2>
-          <button class="btn btn-danger-sm hidden" id="deleteAllBtn" onclick="deleteAll()">
-            <i class="fa-solid fa-trash"></i> Delete All
-          </button>
+          <button type="button" class="btn btn-danger-sm hidden" id="deleteAllBtn">Delete All</button>
         </div>
 
-        <div class="search-bar-row">
-          <div class="search-wrap">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="search" placeholder="Search products..." oninput="liveSearch()"/>
-          </div>
-          <div class="filter-pills">
-            <button class="pill" id="pillTitle" onclick="activatePill('title')">
-              <i class="fa-solid fa-heading"></i> By Title
-            </button>
-            <button class="pill" id="pillCategory" onclick="activatePill('category')">
-              <i class="fa-solid fa-shapes"></i> By Category
-            </button>
-            <button class="pill pill-clear hidden" id="pillClear" onclick="clearSearch()" title="Clear search">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
+        <div class="search-row">
+          <input type="text" id="search" autocomplete="off">
+          <div class="filter-actions">
+            <button type="button" class="btn-filter active" id="pillTitle">By Title</button>
+            <button type="button" class="btn-filter" id="pillCategory">By Category</button>
+            <button type="button" class="btn-filter hidden" id="pillClear" title="Clear search">&times;</button>
           </div>
         </div>
 
-        <div class="table-wrapper">
+        <div class="table-container">
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th>TITLE</th>
-                <th>PRICE</th>
-                <th>DISCOUNT</th>
-                <th>TOTAL</th>
-                <th>CATEGORY</th>
-                <th>ACTIONS</th>
+                <th>ID</th>
+                <th>Title</th>
+                <th class="text-right">Price</th>
+                <th class="text-right">Discount</th>
+                <th class="text-right">Total</th>
+                <th>Category</th>
+                <th class="text-right">Actions</th>
               </tr>
             </thead>
             <tbody id="tbody"></tbody>
           </table>
-          <!-- Empty state -->
-          <div class="empty-state" id="emptyState">
-            <i class="fa-solid fa-box-open"></i>
-            <p>No products yet. Create one above!</p>
+
+          <div class="empty-state hidden" id="emptyState">
+            <p>No products found.</p>
           </div>
         </div>
       </section>
-
     </main>
   </div>
 
